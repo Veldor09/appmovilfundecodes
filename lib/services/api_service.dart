@@ -4,7 +4,7 @@ import '../config.dart';
 import 'storage_service.dart';
 
 class ApiService {
-  static const String baseUrl = AppConfig.baseUrl;
+  static String get baseUrl => AppConfig.baseUrl;
 
   final StorageService _storage = StorageService();
 
