@@ -108,4 +108,21 @@ class ApiService {
       throw Exception('Error al actualizar el estado');
     }
   }
+
+  Future<List<dynamic>> getTareasDelPrograma() async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/tareas/del-programa'),
+      headers: await _authHeaders(),
+    );
+    if (response.statusCode == 200) return jsonDecode(response.body);
+    throw Exception('Error al obtener tareas del programa');
+  }
+
+  Future<void> saveFcmToken(String token) async {
+    await http.put(
+      Uri.parse('$baseUrl/auth/fcm-token'),
+      headers: await _authHeaders(),
+      body: jsonEncode({'token': token}),
+    );
+  }
 }

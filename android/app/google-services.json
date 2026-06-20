@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "927721681978",
+    "project_id": "fundecodes-a0917",
+    "storage_bucket": "fundecodes-a0917.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:927721681978:android:a1582ee70c8cc4ece07103",
+        "android_client_info": {
+          "package_name": "com.fundecodes.fundecodes_mobile"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAXNgId_G8p5LGLyQwf1CQHi5pqGLmXMks"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

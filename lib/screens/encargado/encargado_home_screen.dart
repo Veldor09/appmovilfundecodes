@@ -1,13 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../app_theme.dart';
+import '../../models/tarea_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/programa_provider.dart';
 import '../../providers/tareas_provider.dart';
+import '../../utils/date_helper.dart';
 import '../../widgets/shimmer_card.dart';
 import '../../widgets/empty_state.dart';
+import '../../widgets/status_badge.dart';
 import 'crear_tarea_screen.dart';
 import 'tareas_completadas_screen.dart';
+import 'todas_tareas_screen.dart';
 
 class EncargadoHomeScreen extends StatefulWidget {
   const EncargadoHomeScreen({super.key});
@@ -24,7 +28,103 @@ class _EncargadoHomeScreenState extends State<EncargadoHomeScreen> {
       context.read<ProgramaProvider>().loadPrograma();
       context.read<ProgramaProvider>().loadVoluntarios();
       context.read<TareasProvider>().loadTareasCompletadas();
+      context.read<TareasProvider>().loadTareasDelPrograma();
     });
+  }
+
+  void _mostrarTareasVoluntario(BuildContext context, String nombre, int voluntarioId, List<TareaModel> todas) {
+    final tareas = todas.where((t) => t.voluntarioId == voluntarioId).toList();
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      isScrollControlled: true,
+      builder: (_) => DraggableScrollableSheet(
+        initialChildSize: 0.5,
+        minChildSize: 0.3,
+        maxChildSize: 0.85,
+        expand: false,
+        builder: (_, scrollCtrl) => Column(
+          children: [
+            Container(
+              margin: const EdgeInsets.symmetric(vertical: 12),
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2)),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Row(
+                children: [
+                  CircleAvatar(
+                    backgroundColor: AppTheme.primaryTeal.withOpacity(0.12),
+                    child: Text(nombre[0].toUpperCase(),
+                        style: const TextStyle(color: AppTheme.primaryTeal, fontWeight: FontWeight.bold)),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(nombre, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                        Text('${tareas.length} tarea${tareas.length != 1 ? 's' : ''}',
+                            style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Divider(height: 20),
+            Expanded(
+              child: tareas.isEmpty
+                  ? const Center(
+                      child: Text('Sin tareas asignadas', style: TextStyle(color: Colors.grey)),
+                    )
+                  : ListView.builder(
+                      controller: scrollCtrl,
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      itemCount: tareas.length,
+                      itemBuilder: (_, i) {
+                        final t = tareas[i];
+                        final color = AppTheme.statusColor(t.estado);
+                        return Card(
+                          margin: const EdgeInsets.only(bottom: 8),
+                          elevation: 1,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border(left: BorderSide(color: color, width: 3)),
+                            ),
+                            padding: const EdgeInsets.all(12),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(t.descripcion,
+                                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+                                          maxLines: 2, overflow: TextOverflow.ellipsis),
+                                      const SizedBox(height: 4),
+                                      Text('Límite: ${formatFecha(t.fechaLimite)}',
+                                          style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                StatusBadge(estado: t.estado),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Future<void> _logout() async {
@@ -150,6 +250,18 @@ class _EncargadoHomeScreenState extends State<EncargadoHomeScreen> {
                     ).then((_) => context.read<TareasProvider>().loadTareasCompletadas()),
                   ),
                 ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _ActionCard(
+                    icon: Icons.list_alt,
+                    label: 'Todas las\nTareas',
+                    color: AppTheme.primaryBlue,
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const TodasTareasScreen()),
+                    ),
+                  ),
+                ),
               ],
             ),
             const SizedBox(height: 20),
@@ -182,22 +294,31 @@ class _EncargadoHomeScreenState extends State<EncargadoHomeScreen> {
               )
             else
               ...programaProv.voluntarios.map(
-                (v) => Card(
-                  margin: const EdgeInsets.only(bottom: 8),
-                  elevation: 1,
-                  child: ListTile(
-                    leading: CircleAvatar(
-                      backgroundColor: AppTheme.primaryTeal.withOpacity(0.12),
-                      child: Text(
-                        (v['nombre'] as String? ?? '?')[0].toUpperCase(),
-                        style: const TextStyle(color: AppTheme.primaryTeal, fontWeight: FontWeight.bold),
+                (v) {
+                  final tareasProv = context.read<TareasProvider>();
+                  return Card(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    elevation: 1,
+                    child: ListTile(
+                      leading: CircleAvatar(
+                        backgroundColor: AppTheme.primaryTeal.withOpacity(0.12),
+                        child: Text(
+                          (v['nombre'] as String? ?? '?')[0].toUpperCase(),
+                          style: const TextStyle(color: AppTheme.primaryTeal, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                      title: Text(v['nombre'] ?? '', style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 14)),
+                      subtitle: Text(v['email'] ?? '', style: const TextStyle(fontSize: 12)),
+                      trailing: const Icon(Icons.chevron_right, color: Colors.grey, size: 18),
+                      onTap: () => _mostrarTareasVoluntario(
+                        context,
+                        v['nombre'] ?? 'Voluntario',
+                        v['id'] as int,
+                        tareasProv.tareasDelPrograma,
                       ),
                     ),
-                    title: Text(v['nombre'] ?? '', style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 14)),
-                    subtitle: Text(v['email'] ?? '', style: const TextStyle(fontSize: 12)),
-                    trailing: const Icon(Icons.chevron_right, color: Colors.grey, size: 18),
-                  ),
-                ),
+                  );
+                },
               ),
           ],
         ),

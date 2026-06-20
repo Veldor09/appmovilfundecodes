@@ -7,11 +7,13 @@ class TareasProvider extends ChangeNotifier {
 
   List<TareaModel> _misTareas = [];
   List<TareaModel> _tareasCompletadas = [];
+  List<TareaModel> _tareasDelPrograma = [];
   bool _isLoading = false;
   String? _error;
 
   List<TareaModel> get misTareas => _misTareas;
   List<TareaModel> get tareasCompletadas => _tareasCompletadas;
+  List<TareaModel> get tareasDelPrograma => _tareasDelPrograma;
   bool get isLoading => _isLoading;
   String? get error => _error;
 
@@ -37,6 +39,21 @@ class TareasProvider extends ChangeNotifier {
     try {
       final data = await _api.getTareasCompletadas();
       _tareasCompletadas = data.map((j) => TareaModel.fromJson(j)).toList();
+    } catch (e) {
+      _error = e.toString().replaceFirst('Exception: ', '');
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> loadTareasDelPrograma() async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+    try {
+      final data = await _api.getTareasDelPrograma();
+      _tareasDelPrograma = data.map((j) => TareaModel.fromJson(j)).toList();
     } catch (e) {
       _error = e.toString().replaceFirst('Exception: ', '');
     } finally {

@@ -1,3 +1,4 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'app_theme.dart';
@@ -5,13 +6,14 @@ import 'providers/auth_provider.dart';
 import 'providers/programa_provider.dart';
 import 'providers/tareas_provider.dart';
 import 'screens/login_screen.dart';
+import 'screens/splash_screen.dart';
 import 'screens/encargado/encargado_home_screen.dart';
 import 'screens/voluntario/voluntario_home_screen.dart';
+import 'services/notification_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  // Descomenta cuando configures Firebase:
-  // await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  await Firebase.initializeApp();
   runApp(const FundecodesApp());
 }
 
@@ -44,6 +46,8 @@ class AuthGate extends StatefulWidget {
 }
 
 class _AuthGateState extends State<AuthGate> {
+  bool _notificationsInit = false;
+
   @override
   void initState() {
     super.initState();
@@ -56,21 +60,17 @@ class _AuthGateState extends State<AuthGate> {
   Widget build(BuildContext context) {
     return Consumer<AuthProvider>(
       builder: (context, auth, _) {
+        if (auth.status == AuthStatus.authenticated && !_notificationsInit) {
+          _notificationsInit = true;
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            NotificationService().init(context);
+          });
+        }
+
         switch (auth.status) {
           case AuthStatus.initial:
           case AuthStatus.loading:
-            return const Scaffold(
-              body: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    CircularProgressIndicator(),
-                    SizedBox(height: 16),
-                    Text('Cargando...', style: TextStyle(color: Colors.grey)),
-                  ],
-                ),
-              ),
-            );
+            return const SplashScreen();
           case AuthStatus.authenticated:
             if (auth.user!.isEncargado) return const EncargadoHomeScreen();
             return const VoluntarioHomeScreen();

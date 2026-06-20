@@ -5,6 +5,7 @@ import '../../models/tarea_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/programa_provider.dart';
 import '../../providers/tareas_provider.dart';
+import '../../utils/date_helper.dart';
 import '../../widgets/shimmer_card.dart';
 import '../../widgets/empty_state.dart';
 import '../../widgets/status_badge.dart';
@@ -223,28 +224,38 @@ class _ResumenRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final counts = {
-      'PENDIENTE': tareas.where((t) => t.estado == 'PENDIENTE').length,
-      'COMPLETADA': tareas.where((t) => t.estado == 'COMPLETADA').length,
-      'APROBADA': tareas.where((t) => t.estado == 'APROBADA').length,
-    };
+    final items = [
+      ('PENDIENTE', 'Pendiente'),
+      ('COMPLETADA', 'Completada'),
+      ('APROBADA', 'Aprobada'),
+      ('RECHAZADA', 'Rechazada'),
+    ];
     return Row(
-      children: counts.entries.map((e) => Expanded(
-        child: Container(
-          margin: EdgeInsets.only(right: e.key != 'APROBADA' ? 8 : 0),
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 6)],
+      children: items.asMap().entries.map((entry) {
+        final i = entry.key;
+        final estado = entry.value.$1;
+        final label = entry.value.$2;
+        final count = tareas.where((t) => t.estado == estado).length;
+        return Expanded(
+          child: Container(
+            margin: EdgeInsets.only(right: i < 3 ? 6 : 0),
+            padding: const EdgeInsets.symmetric(vertical: 10),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 6)],
+            ),
+            child: Column(children: [
+              Text('$count',
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold,
+                      color: AppTheme.statusColor(estado))),
+              const SizedBox(height: 2),
+              Text(label, style: const TextStyle(fontSize: 9, color: Colors.grey),
+                  overflow: TextOverflow.ellipsis),
+            ]),
           ),
-          child: Column(children: [
-            Text('${e.value}', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppTheme.statusColor(e.key))),
-            const SizedBox(height: 2),
-            Text(e.key[0] + e.key.substring(1).toLowerCase(), style: const TextStyle(fontSize: 10, color: Colors.grey)),
-          ]),
-        ),
-      )).toList(),
+        );
+      }).toList(),
     );
   }
 }
@@ -289,7 +300,7 @@ class _TareaCard extends StatelessWidget {
               Row(children: [
                 const Icon(Icons.calendar_today, size: 12, color: Colors.grey),
                 const SizedBox(width: 4),
-                Text('Límite: ${tarea.fechaLimite.split('T').first}',
+                Text('Límite: ${formatFecha(tarea.fechaLimite)}',
                     style: const TextStyle(color: Colors.grey, fontSize: 12)),
                 const Spacer(),
                 const Icon(Icons.chevron_right, size: 16, color: Colors.grey),

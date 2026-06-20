@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../app_theme.dart';
 import '../../models/tarea_model.dart';
 import '../../providers/tareas_provider.dart';
+import '../../utils/date_helper.dart';
 
 class TareaDetailScreen extends StatelessWidget {
   final TareaModel tarea;
@@ -10,6 +11,10 @@ class TareaDetailScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final bool aprobada = tarea.estado == 'APROBADA';
+    final bool rechazada = tarea.estado == 'RECHAZADA';
+    final bool resuelta = aprobada || rechazada;
+
     return Scaffold(
       appBar: AppBar(
         flexibleSpace: Container(decoration: BoxDecoration(gradient: AppTheme.primaryGradient)),
@@ -30,38 +35,52 @@ class TareaDetailScreen extends StatelessWidget {
               children: [
                 _InfoRow(label: 'Programa', value: tarea.programaNombre, icon: Icons.groups),
                 _InfoRow(label: 'Descripción', value: tarea.descripcion, icon: Icons.task),
-                _InfoRow(label: 'Fecha límite', value: tarea.fechaLimite, icon: Icons.calendar_today),
+                _InfoRow(
+                  label: 'Fecha límite',
+                  value: formatFecha(tarea.fechaLimite),
+                  icon: Icons.calendar_today,
+                ),
                 _InfoRow(
                   label: 'Estado',
-                  value: tarea.estado,
+                  value: tarea.estado[0] + tarea.estado.substring(1).toLowerCase(),
                   icon: Icons.info_outline,
                   valueColor: AppTheme.statusColor(tarea.estado),
                 ),
               ],
             ),
           ),
-          if (tarea.estado == 'APROBADA' || tarea.estado == 'RECHAZADA')
+
+          if (resuelta)
             Container(
               margin: const EdgeInsets.symmetric(horizontal: 16),
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: Colors.amber.shade50,
+                color: aprobada ? Colors.green.shade50 : Colors.red.shade50,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.amber.shade300),
+                border: Border.all(color: aprobada ? Colors.green.shade300 : Colors.red.shade300),
               ),
               child: Row(
                 children: [
-                  Icon(Icons.info_outline, color: Colors.amber.shade700),
+                  Icon(
+                    aprobada ? Icons.check_circle_outline : Icons.cancel_outlined,
+                    color: aprobada ? Colors.green.shade700 : Colors.red.shade700,
+                  ),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      'Esta tarea fue ${tarea.estado.toLowerCase()} por el encargado.',
-                      style: TextStyle(color: Colors.amber.shade900, fontSize: 13),
+                      aprobada
+                          ? 'Esta tarea fue aprobada por el encargado.'
+                          : 'Esta tarea fue rechazada por el encargado.',
+                      style: TextStyle(
+                        color: aprobada ? Colors.green.shade900 : Colors.red.shade900,
+                        fontSize: 13,
+                      ),
                     ),
                   ),
                 ],
               ),
             ),
+
           if (tarea.estado == 'PENDIENTE')
             Padding(
               padding: const EdgeInsets.all(16),
@@ -77,13 +96,16 @@ class TareaDetailScreen extends StatelessWidget {
                   final confirm = await showDialog<bool>(
                     context: context,
                     builder: (_) => AlertDialog(
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                       title: const Text('Confirmar'),
                       content: const Text('¿Marcar esta tarea como completada?'),
                       actions: [
                         TextButton(
-                            onPressed: () => Navigator.pop(context, false), child: const Text('Cancelar')),
+                            onPressed: () => Navigator.pop(context, false),
+                            child: const Text('Cancelar')),
                         ElevatedButton(
-                            onPressed: () => Navigator.pop(context, true), child: const Text('Confirmar')),
+                            onPressed: () => Navigator.pop(context, true),
+                            child: const Text('Confirmar')),
                       ],
                     ),
                   );
@@ -93,6 +115,8 @@ class TareaDetailScreen extends StatelessWidget {
                       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
                         content: Text(ok ? 'Tarea marcada como completada' : 'Error al actualizar'),
                         backgroundColor: ok ? Colors.green : Colors.red,
+                        behavior: SnackBarBehavior.floating,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                       ));
                       if (ok) Navigator.pop(context);
                     }
