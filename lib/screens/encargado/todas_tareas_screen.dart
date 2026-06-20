@@ -16,7 +16,8 @@ class TodasTareasScreen extends StatefulWidget {
 }
 
 class _TodasTareasScreenState extends State<TodasTareasScreen> {
-  String _filtro = 'TODOS';
+  String _filtroEstado = 'TODOS';
+  int? _filtroVoluntarioId;
 
   @override
   void initState() {
@@ -27,14 +28,31 @@ class _TodasTareasScreenState extends State<TodasTareasScreen> {
   }
 
   List<TareaModel> _filtrar(List<TareaModel> tareas) {
-    if (_filtro == 'TODOS') return tareas;
-    return tareas.where((t) => t.estado == _filtro).toList();
+    var result = tareas;
+    if (_filtroEstado != 'TODOS') result = result.where((t) => t.estado == _filtroEstado).toList();
+    if (_filtroVoluntarioId != null) {
+      result = result.where((t) => t.voluntarioId == _filtroVoluntarioId).toList();
+    }
+    return result;
+  }
+
+  List<Map<String, dynamic>> _voluntariosUnicos(List<TareaModel> tareas) {
+    final seen = <int>{};
+    final result = <Map<String, dynamic>>[];
+    for (final t in tareas) {
+      if (seen.add(t.voluntarioId)) {
+        result.add({'id': t.voluntarioId, 'nombre': t.voluntarioNombre});
+      }
+    }
+    result.sort((a, b) => (a['nombre'] as String).compareTo(b['nombre'] as String));
+    return result;
   }
 
   @override
   Widget build(BuildContext context) {
     final prov = context.watch<TareasProvider>();
     final filtradas = _filtrar(prov.tareasDelPrograma);
+    final voluntarios = _voluntariosUnicos(prov.tareasDelPrograma);
 
     return Scaffold(
       backgroundColor: AppTheme.backgroundColor,
@@ -60,7 +78,7 @@ class _TodasTareasScreenState extends State<TodasTareasScreen> {
         onRefresh: () => context.read<TareasProvider>().loadTareasDelPrograma(),
         child: Column(
           children: [
-            // Resumen de conteos por estado
+            // Stats por estado
             if (!prov.isLoading && prov.tareasDelPrograma.isNotEmpty)
               Container(
                 color: Colors.white,
@@ -84,10 +102,10 @@ class _TodasTareasScreenState extends State<TodasTareasScreen> {
                 ),
               ),
 
-            // Filtros
+            // Filtro por estado
             SingleChildScrollView(
               scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              padding: const EdgeInsets.only(left: 16, right: 16, top: 8, bottom: 2),
               child: Row(
                 children: ['TODOS', 'PENDIENTE', 'COMPLETADA', 'APROBADA', 'RECHAZADA']
                     .map((f) => Padding(
@@ -95,18 +113,69 @@ class _TodasTareasScreenState extends State<TodasTareasScreen> {
                           child: FilterChip(
                             label: Text(f == 'TODOS' ? 'Todos' : f[0] + f.substring(1).toLowerCase(),
                                 style: const TextStyle(fontSize: 11)),
-                            selected: _filtro == f,
-                            onSelected: (_) => setState(() => _filtro = f),
+                            selected: _filtroEstado == f,
+                            onSelected: (_) => setState(() => _filtroEstado = f),
                             selectedColor: AppTheme.primaryTeal.withOpacity(0.15),
                             checkmarkColor: AppTheme.primaryTeal,
                             side: BorderSide(
-                              color: _filtro == f ? AppTheme.primaryTeal : Colors.grey.shade300,
+                              color: _filtroEstado == f ? AppTheme.primaryTeal : Colors.grey.shade300,
                             ),
                           ),
                         ))
                     .toList(),
               ),
             ),
+
+            // Filtro por voluntario
+            if (voluntarios.length > 1)
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.only(left: 16, right: 16, bottom: 8),
+                child: Row(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: FilterChip(
+                        avatar: const Icon(Icons.people, size: 14),
+                        label: const Text('Todos', style: TextStyle(fontSize: 11)),
+                        selected: _filtroVoluntarioId == null,
+                        onSelected: (_) => setState(() => _filtroVoluntarioId = null),
+                        selectedColor: AppTheme.primaryBlue.withOpacity(0.15),
+                        checkmarkColor: AppTheme.primaryBlue,
+                        side: BorderSide(
+                          color: _filtroVoluntarioId == null ? AppTheme.primaryBlue : Colors.grey.shade300,
+                        ),
+                      ),
+                    ),
+                    ...voluntarios.map((v) => Padding(
+                          padding: const EdgeInsets.only(right: 8),
+                          child: FilterChip(
+                            avatar: CircleAvatar(
+                              radius: 8,
+                              backgroundColor: AppTheme.primaryTeal.withOpacity(0.2),
+                              child: Text(
+                                (v['nombre'] as String)[0].toUpperCase(),
+                                style: const TextStyle(fontSize: 9, color: AppTheme.primaryTeal),
+                              ),
+                            ),
+                            label: Text(v['nombre'] as String, style: const TextStyle(fontSize: 11)),
+                            selected: _filtroVoluntarioId == v['id'],
+                            onSelected: (_) => setState(() {
+                              _filtroVoluntarioId =
+                                  _filtroVoluntarioId == v['id'] ? null : v['id'] as int;
+                            }),
+                            selectedColor: AppTheme.primaryBlue.withOpacity(0.15),
+                            checkmarkColor: AppTheme.primaryBlue,
+                            side: BorderSide(
+                              color: _filtroVoluntarioId == v['id']
+                                  ? AppTheme.primaryBlue
+                                  : Colors.grey.shade300,
+                            ),
+                          ),
+                        )),
+                  ],
+                ),
+              ),
 
             // Lista
             Expanded(
@@ -119,12 +188,12 @@ class _TodasTareasScreenState extends State<TodasTareasScreen> {
                       ? EmptyState(
                           icon: Icons.assignment_outlined,
                           title: 'Sin tareas',
-                          subtitle: _filtro == 'TODOS'
+                          subtitle: _filtroEstado == 'TODOS' && _filtroVoluntarioId == null
                               ? 'No hay tareas creadas aún.'
-                              : 'No hay tareas con estado "${_filtro.toLowerCase()}".',
+                              : 'No hay tareas con los filtros seleccionados.',
                         )
                       : ListView.builder(
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                           itemCount: filtradas.length,
                           itemBuilder: (_, i) => _TareaEncargadoCard(tarea: filtradas[i]),
                         ),
@@ -192,9 +261,15 @@ class _TareaEncargadoCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 8),
-            Text(tarea.descripcion,
-                style: const TextStyle(fontSize: 13, color: Colors.black87),
-                maxLines: 2, overflow: TextOverflow.ellipsis),
+            Text(tarea.tituloDisplay,
+                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black87),
+                maxLines: 1, overflow: TextOverflow.ellipsis),
+            if (tarea.descripcion.isNotEmpty) ...[
+              const SizedBox(height: 2),
+              Text(tarea.descripcion,
+                  style: const TextStyle(fontSize: 12, color: Colors.black54),
+                  maxLines: 2, overflow: TextOverflow.ellipsis),
+            ],
             const SizedBox(height: 6),
             Row(children: [
               const Icon(Icons.calendar_today, size: 11, color: Colors.grey),

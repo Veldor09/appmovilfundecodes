@@ -21,6 +21,7 @@ class UserModel {
         token: json['access_token'] ?? '',
       );
 
+  bool get isAdmin => rol == 'ADMIN';
   bool get isEncargado => rol == 'ENCARGADO';
   bool get isVoluntario => rol == 'VOLUNTARIO';
 }

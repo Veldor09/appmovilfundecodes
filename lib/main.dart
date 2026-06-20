@@ -5,6 +5,7 @@ import 'app_theme.dart';
 import 'providers/auth_provider.dart';
 import 'providers/programa_provider.dart';
 import 'providers/tareas_provider.dart';
+import 'screens/admin/admin_home_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/splash_screen.dart';
 import 'screens/encargado/encargado_home_screen.dart';
@@ -13,7 +14,11 @@ import 'services/notification_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp();
+  try {
+    await Firebase.initializeApp();
+  } catch (_) {
+    // Firebase no configurado — notificaciones desactivadas
+  }
   runApp(const FundecodesApp());
 }
 
@@ -72,6 +77,7 @@ class _AuthGateState extends State<AuthGate> {
           case AuthStatus.loading:
             return const SplashScreen();
           case AuthStatus.authenticated:
+            if (auth.user!.isAdmin) return const AdminHomeScreen();
             if (auth.user!.isEncargado) return const EncargadoHomeScreen();
             return const VoluntarioHomeScreen();
           case AuthStatus.unauthenticated:

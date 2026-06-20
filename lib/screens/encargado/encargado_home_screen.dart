@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../app_theme.dart';
@@ -10,6 +11,7 @@ import '../../widgets/shimmer_card.dart';
 import '../../widgets/empty_state.dart';
 import '../../widgets/status_badge.dart';
 import 'crear_tarea_screen.dart';
+import 'gestionar_voluntarios_screen.dart';
 import 'tareas_completadas_screen.dart';
 import 'todas_tareas_screen.dart';
 
@@ -21,6 +23,9 @@ class EncargadoHomeScreen extends StatefulWidget {
 }
 
 class _EncargadoHomeScreenState extends State<EncargadoHomeScreen> {
+  Timer? _autoRefreshTimer;
+  DateTime _lastRefresh = DateTime.now();
+
   @override
   void initState() {
     super.initState();
@@ -30,6 +35,23 @@ class _EncargadoHomeScreenState extends State<EncargadoHomeScreen> {
       context.read<TareasProvider>().loadTareasCompletadas();
       context.read<TareasProvider>().loadTareasDelPrograma();
     });
+    _autoRefreshTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      if (mounted) _silentRefresh();
+    });
+  }
+
+  @override
+  void dispose() {
+    _autoRefreshTimer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _silentRefresh() async {
+    await Future.wait([
+      context.read<TareasProvider>().loadTareasCompletadas(),
+      context.read<TareasProvider>().loadTareasDelPrograma(),
+    ]);
+    if (mounted) setState(() => _lastRefresh = DateTime.now());
   }
 
   void _mostrarTareasVoluntario(BuildContext context, String nombre, int voluntarioId, List<TareaModel> todas) {
@@ -173,7 +195,9 @@ class _EncargadoHomeScreenState extends State<EncargadoHomeScreen> {
             context.read<ProgramaProvider>().loadPrograma(),
             context.read<ProgramaProvider>().loadVoluntarios(),
             context.read<TareasProvider>().loadTareasCompletadas(),
+            context.read<TareasProvider>().loadTareasDelPrograma(),
           ]);
+          if (mounted) setState(() => _lastRefresh = DateTime.now());
         },
         child: ListView(
           padding: const EdgeInsets.all(16),
@@ -219,7 +243,13 @@ class _EncargadoHomeScreenState extends State<EncargadoHomeScreen> {
                   ],
                 ),
               ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 16),
+
+            // Estadísticas del programa
+            if (tareasProv.tareasDelPrograma.isNotEmpty)
+              _StatsCard(tareas: tareasProv.tareasDelPrograma, lastRefresh: _lastRefresh),
+
+            const SizedBox(height: 16),
 
             // Acciones rápidas
             const Text('Acciones', style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
@@ -263,6 +293,16 @@ class _EncargadoHomeScreenState extends State<EncargadoHomeScreen> {
                   ),
                 ),
               ],
+            ),
+            const SizedBox(height: 12),
+            _ActionCard(
+              icon: Icons.group_add,
+              label: 'Gestionar Voluntarios',
+              color: const Color(0xFF7C3AED),
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const GestionarVoluntariosScreen()),
+              ).then((_) => context.read<ProgramaProvider>().loadVoluntarios()),
             ),
             const SizedBox(height: 20),
 
@@ -323,6 +363,99 @@ class _EncargadoHomeScreenState extends State<EncargadoHomeScreen> {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _StatsCard extends StatelessWidget {
+  final List<TareaModel> tareas;
+  final DateTime lastRefresh;
+
+  const _StatsCard({required this.tareas, required this.lastRefresh});
+
+  @override
+  Widget build(BuildContext context) {
+    final total = tareas.length;
+    final pendientes = tareas.where((t) => t.estado == 'PENDIENTE').length;
+    final enRevision = tareas.where((t) => t.estado == 'COMPLETADA').length;
+    final aprobadas = tareas.where((t) => t.estado == 'APROBADA').length;
+    final rechazadas = tareas.where((t) => t.estado == 'RECHAZADA').length;
+    final avance = total == 0 ? 0.0 : (aprobadas + enRevision) / total;
+
+    final now = DateTime.now();
+    final diff = now.difference(lastRefresh);
+    final refreshLabel = diff.inSeconds < 60
+        ? 'hace ${diff.inSeconds}s'
+        : 'hace ${diff.inMinutes}min';
+
+    return Card(
+      elevation: 1,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Text('Progreso del programa',
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+                const Spacer(),
+                Row(
+                  children: [
+                    const Icon(Icons.refresh, size: 11, color: Colors.grey),
+                    const SizedBox(width: 3),
+                    Text(refreshLabel,
+                        style: const TextStyle(fontSize: 10, color: Colors.grey)),
+                  ],
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(6),
+              child: LinearProgressIndicator(
+                value: avance,
+                minHeight: 8,
+                backgroundColor: Colors.grey.shade200,
+                valueColor: const AlwaysStoppedAnimation<Color>(AppTheme.primaryTeal),
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text('${(avance * 100).toStringAsFixed(0)}% completado ($total tareas total)',
+                style: const TextStyle(fontSize: 11, color: Colors.grey)),
+            const SizedBox(height: 12),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                _StatItem('$pendientes', 'Pendientes', AppTheme.statusPendiente),
+                _StatItem('$enRevision', 'En revisión', AppTheme.statusCompletada),
+                _StatItem('$aprobadas', 'Aprobadas', AppTheme.statusAprobada),
+                _StatItem('$rechazadas', 'Rechazadas', AppTheme.statusRechazada),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _StatItem extends StatelessWidget {
+  final String value;
+  final String label;
+  final Color color;
+
+  const _StatItem(this.value, this.label, this.color);
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Text(value,
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: color)),
+        Text(label, style: const TextStyle(fontSize: 9, color: Colors.grey)),
+      ],
     );
   }
 }

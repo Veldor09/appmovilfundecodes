@@ -66,6 +66,7 @@ class ApiService {
   }
 
   Future<Map<String, dynamic>> crearTarea({
+    required String titulo,
     required String descripcion,
     required String fechaLimite,
     required int voluntarioId,
@@ -75,6 +76,7 @@ class ApiService {
       Uri.parse('$baseUrl/tareas'),
       headers: await _authHeaders(),
       body: jsonEncode({
+        'titulo': titulo,
         'descripcion': descripcion,
         'fechaLimite': fechaLimite,
         'voluntarioId': voluntarioId,
@@ -98,11 +100,13 @@ class ApiService {
     }
   }
 
-  Future<void> actualizarEstadoTarea(int id, String estado) async {
+  Future<void> actualizarEstadoTarea(int id, String estado, {String? comentario}) async {
+    final body = <String, dynamic>{'estado': estado};
+    if (comentario != null && comentario.isNotEmpty) body['comentario'] = comentario;
     final response = await http.put(
       Uri.parse('$baseUrl/tareas/$id/estado'),
       headers: await _authHeaders(),
-      body: jsonEncode({'estado': estado}),
+      body: jsonEncode(body),
     );
     if (response.statusCode != 200 && response.statusCode != 201) {
       throw Exception('Error al actualizar el estado');
@@ -124,5 +128,103 @@ class ApiService {
       headers: await _authHeaders(),
       body: jsonEncode({'token': token}),
     );
+  }
+
+  // ── Encargado: gestión de voluntarios ──────────────────────────────────────
+
+  Future<List<dynamic>> getVoluntariosDisponibles() async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/programas/voluntarios-disponibles'),
+      headers: await _authHeaders(),
+    );
+    if (response.statusCode == 200) return jsonDecode(response.body);
+    throw Exception('Error al obtener voluntarios disponibles');
+  }
+
+  Future<void> agregarVoluntarioAPrograma(int voluntarioId) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/programas/voluntarios/$voluntarioId'),
+      headers: await _authHeaders(),
+    );
+    if (response.statusCode != 200 && response.statusCode != 201) {
+      final body = jsonDecode(response.body);
+      throw Exception(body['message'] ?? 'Error al agregar voluntario');
+    }
+  }
+
+  Future<void> quitarVoluntarioDePrograma(int voluntarioId) async {
+    final response = await http.delete(
+      Uri.parse('$baseUrl/programas/voluntarios/$voluntarioId'),
+      headers: await _authHeaders(),
+    );
+    if (response.statusCode != 200 && response.statusCode != 201) {
+      throw Exception('Error al quitar voluntario');
+    }
+  }
+
+  // ── Admin: usuarios ────────────────────────────────────────────────────────
+
+  Future<List<dynamic>> adminGetUsuarios() async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/admin/usuarios'),
+      headers: await _authHeaders(),
+    );
+    if (response.statusCode == 200) return jsonDecode(response.body);
+    throw Exception('Error al obtener usuarios');
+  }
+
+  Future<Map<String, dynamic>> adminCrearUsuario({
+    required String nombre,
+    required String email,
+    required String password,
+    required String rol,
+  }) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/admin/usuarios'),
+      headers: await _authHeaders(),
+      body: jsonEncode({'nombre': nombre, 'email': email, 'password': password, 'rol': rol}),
+    );
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      return jsonDecode(response.body);
+    }
+    final body = jsonDecode(response.body);
+    throw Exception(body['message'] ?? 'Error al crear usuario');
+  }
+
+  // ── Admin: programas ───────────────────────────────────────────────────────
+
+  Future<List<dynamic>> adminGetProgramas() async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/admin/programas'),
+      headers: await _authHeaders(),
+    );
+    if (response.statusCode == 200) return jsonDecode(response.body);
+    throw Exception('Error al obtener programas');
+  }
+
+  Future<Map<String, dynamic>> adminCrearPrograma({
+    required String nombre,
+    String? descripcion,
+    required int encargadoId,
+  }) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/admin/programas'),
+      headers: await _authHeaders(),
+      body: jsonEncode({'nombre': nombre, 'descripcion': descripcion, 'encargadoId': encargadoId}),
+    );
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      return jsonDecode(response.body);
+    }
+    final body = jsonDecode(response.body);
+    throw Exception(body['message'] ?? 'Error al crear programa');
+  }
+
+  Future<List<dynamic>> adminGetEncargados() async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/admin/encargados'),
+      headers: await _authHeaders(),
+    );
+    if (response.statusCode == 200) return jsonDecode(response.body);
+    throw Exception('Error al obtener encargados');
   }
 }

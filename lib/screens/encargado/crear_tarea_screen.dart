@@ -13,6 +13,7 @@ class CrearTareaScreen extends StatefulWidget {
 
 class _CrearTareaScreenState extends State<CrearTareaScreen> {
   final _formKey = GlobalKey<FormState>();
+  final _tituloCtrl = TextEditingController();
   final _descCtrl = TextEditingController();
   DateTime? _fechaLimite;
   int? _voluntarioSeleccionado;
@@ -28,6 +29,7 @@ class _CrearTareaScreenState extends State<CrearTareaScreen> {
 
   @override
   void dispose() {
+    _tituloCtrl.dispose();
     _descCtrl.dispose();
     super.dispose();
   }
@@ -59,6 +61,7 @@ class _CrearTareaScreenState extends State<CrearTareaScreen> {
     try {
       final programa = context.read<ProgramaProvider>().programa;
       await ApiService().crearTarea(
+        titulo: _tituloCtrl.text.trim(),
         descripcion: _descCtrl.text.trim(),
         fechaLimite: _fechaLimite!.toIso8601String(),
         voluntarioId: _voluntarioSeleccionado!,
@@ -68,13 +71,16 @@ class _CrearTareaScreenState extends State<CrearTareaScreen> {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
           content: Text('Tarea creada exitosamente'),
           backgroundColor: Colors.green,
+          behavior: SnackBarBehavior.floating,
         ));
         Navigator.pop(context);
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(e.toString().replaceFirst('Exception: ', '')), backgroundColor: Colors.red));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(e.toString().replaceFirst('Exception: ', '')),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating));
       }
     } finally {
       if (mounted) setState(() => _cargando = false);
@@ -95,21 +101,41 @@ class _CrearTareaScreenState extends State<CrearTareaScreen> {
         child: Form(
           key: _formKey,
           child: Card(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             child: Padding(
               padding: const EdgeInsets.all(20),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  // Título
+                  TextFormField(
+                    controller: _tituloCtrl,
+                    textCapitalization: TextCapitalization.sentences,
+                    decoration: const InputDecoration(
+                      labelText: 'Título de la tarea',
+                      prefixIcon: Icon(Icons.title),
+                      border: OutlineInputBorder(),
+                    ),
+                    validator: (v) => v!.trim().isEmpty ? 'Ingresa un título' : null,
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Descripción
                   TextFormField(
                     controller: _descCtrl,
+                    textCapitalization: TextCapitalization.sentences,
                     decoration: const InputDecoration(
-                      labelText: 'Descripción de la tarea',
-                      prefixIcon: Icon(Icons.task),
+                      labelText: 'Descripción detallada',
+                      prefixIcon: Icon(Icons.notes),
+                      border: OutlineInputBorder(),
+                      alignLabelWithHint: true,
                     ),
-                    maxLines: 3,
+                    maxLines: 4,
                     validator: (v) => v!.trim().isEmpty ? 'Ingresa una descripción' : null,
                   ),
                   const SizedBox(height: 16),
+
+                  // Fecha límite
                   InkWell(
                     onTap: _seleccionarFecha,
                     child: InputDecorator(
@@ -128,12 +154,16 @@ class _CrearTareaScreenState extends State<CrearTareaScreen> {
                     ),
                   ),
                   const SizedBox(height: 16),
+
+                  // Voluntario
                   DropdownButtonFormField<int>(
                     value: _voluntarioSeleccionado,
                     decoration: const InputDecoration(
                       labelText: 'Asignar a voluntario',
                       prefixIcon: Icon(Icons.person),
+                      border: OutlineInputBorder(),
                     ),
+                    hint: const Text('Selecciona un voluntario'),
                     items: voluntarios
                         .map<DropdownMenuItem<int>>(
                             (v) => DropdownMenuItem<int>(value: v['id'], child: Text(v['nombre'] ?? '')))
@@ -142,6 +172,7 @@ class _CrearTareaScreenState extends State<CrearTareaScreen> {
                     validator: (v) => v == null ? 'Selecciona un voluntario' : null,
                   ),
                   const SizedBox(height: 24),
+
                   ElevatedButton.icon(
                     onPressed: _cargando ? null : _guardarTarea,
                     icon: _cargando
@@ -154,6 +185,7 @@ class _CrearTareaScreenState extends State<CrearTareaScreen> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppTheme.primaryTeal,
                       minimumSize: const Size.fromHeight(50),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     ),
                   ),
                 ],

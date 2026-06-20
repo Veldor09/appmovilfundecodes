@@ -74,9 +74,9 @@ class TareasProvider extends ChangeNotifier {
     }
   }
 
-  Future<bool> actualizarEstado(int id, String estado) async {
+  Future<bool> actualizarEstado(int id, String estado, {String? comentario}) async {
     try {
-      await _api.actualizarEstadoTarea(id, estado);
+      await _api.actualizarEstadoTarea(id, estado, comentario: comentario);
       await loadTareasCompletadas();
       return true;
     } catch (e) {

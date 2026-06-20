@@ -288,9 +288,18 @@ class _TareaCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Expanded(
-                    child: Text(tarea.descripcion,
-                        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
-                        maxLines: 2, overflow: TextOverflow.ellipsis),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(tarea.tituloDisplay,
+                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                            maxLines: 1, overflow: TextOverflow.ellipsis),
+                        if (tarea.descripcion.isNotEmpty)
+                          Text(tarea.descripcion,
+                              style: const TextStyle(fontSize: 12, color: Colors.black54),
+                              maxLines: 2, overflow: TextOverflow.ellipsis),
+                      ],
+                    ),
                   ),
                   const SizedBox(width: 8),
                   StatusBadge(estado: tarea.estado),

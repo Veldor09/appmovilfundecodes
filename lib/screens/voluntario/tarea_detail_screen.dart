@@ -34,7 +34,8 @@ class TareaDetailScreen extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _InfoRow(label: 'Programa', value: tarea.programaNombre, icon: Icons.groups),
-                _InfoRow(label: 'Descripción', value: tarea.descripcion, icon: Icons.task),
+                _InfoRow(label: 'Título', value: tarea.tituloDisplay, icon: Icons.title),
+                _InfoRow(label: 'Descripción', value: tarea.descripcion, icon: Icons.notes),
                 _InfoRow(
                   label: 'Fecha límite',
                   value: formatFecha(tarea.fechaLimite),
@@ -67,14 +68,27 @@ class TareaDetailScreen extends StatelessWidget {
                   ),
                   const SizedBox(width: 10),
                   Expanded(
-                    child: Text(
-                      aprobada
-                          ? 'Esta tarea fue aprobada por el encargado.'
-                          : 'Esta tarea fue rechazada por el encargado.',
-                      style: TextStyle(
-                        color: aprobada ? Colors.green.shade900 : Colors.red.shade900,
-                        fontSize: 13,
-                      ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          aprobada
+                              ? 'Esta tarea fue aprobada por el encargado.'
+                              : 'Esta tarea fue rechazada por el encargado.',
+                          style: TextStyle(
+                            color: aprobada ? Colors.green.shade900 : Colors.red.shade900,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        if (!aprobada && tarea.comentario != null && tarea.comentario!.isNotEmpty) ...[
+                          const SizedBox(height: 6),
+                          Text(
+                            'Motivo: ${tarea.comentario}',
+                            style: TextStyle(color: Colors.red.shade800, fontSize: 13),
+                          ),
+                        ],
+                      ],
                     ),
                   ),
                 ],

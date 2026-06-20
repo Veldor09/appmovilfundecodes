@@ -23,36 +23,84 @@ class _TareasCompletadasScreenState extends State<TareasCompletadasScreen> {
   }
 
   Future<void> _actualizarEstado(TareaModel tarea, String estado) async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text(estado == 'APROBADA' ? 'Aprobar tarea' : 'Rechazar tarea'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Voluntario: ${tarea.voluntarioNombre}',
-                style: const TextStyle(fontWeight: FontWeight.w500)),
-            const SizedBox(height: 6),
-            Text(tarea.descripcion, style: const TextStyle(color: Colors.grey, fontSize: 13)),
+    String? comentario;
+
+    if (estado == 'RECHAZADA') {
+      final result = await showDialog<String?>(
+        context: context,
+        builder: (_) {
+          final ctrl = TextEditingController();
+          return AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            title: const Text('Rechazar tarea'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Voluntario: ${tarea.voluntarioNombre}',
+                    style: const TextStyle(fontWeight: FontWeight.w500)),
+                const SizedBox(height: 6),
+                Text(tarea.tituloDisplay, style: const TextStyle(color: Colors.grey, fontSize: 13)),
+                const SizedBox(height: 14),
+                TextField(
+                  controller: ctrl,
+                  maxLines: 3,
+                  decoration: InputDecoration(
+                    hintText: 'Motivo del rechazo (opcional)',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  ),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                onPressed: () => Navigator.pop(context, ctrl.text.trim()),
+                child: const Text('Rechazar'),
+              ),
+            ],
+          );
+        },
+      );
+      if (result == null) return;
+      comentario = result.isEmpty ? null : result;
+    } else {
+      final confirm = await showDialog<bool>(
+        context: context,
+        builder: (_) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Text('Aprobar tarea'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Voluntario: ${tarea.voluntarioNombre}',
+                  style: const TextStyle(fontWeight: FontWeight.w500)),
+              const SizedBox(height: 6),
+              Text(tarea.tituloDisplay, style: const TextStyle(color: Colors.grey, fontSize: 13)),
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancelar')),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Aprobar'),
+            ),
           ],
         ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancelar')),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: estado == 'APROBADA' ? Colors.green : Colors.red,
-            ),
-            onPressed: () => Navigator.pop(context, true),
-            child: Text(estado == 'APROBADA' ? 'Aprobar' : 'Rechazar'),
-          ),
-        ],
-      ),
-    );
+      );
+      if (confirm != true) return;
+    }
 
-    if (confirm == true && mounted) {
-      final ok = await context.read<TareasProvider>().actualizarEstado(tarea.id, estado);
+    if (mounted) {
+      final ok = await context.read<TareasProvider>().actualizarEstado(
+            tarea.id,
+            estado,
+            comentario: comentario,
+          );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text(ok ? 'Tarea ${estado.toLowerCase()} correctamente' : 'Error al actualizar'),
@@ -177,8 +225,14 @@ class _ReviewCard extends StatelessWidget {
               ],
             ),
             const Divider(height: 20),
-            Text(tarea.descripcion,
-                style: const TextStyle(fontSize: 14, color: Colors.black87)),
+            Text(tarea.tituloDisplay,
+                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black87)),
+            if (tarea.descripcion.isNotEmpty) ...[
+              const SizedBox(height: 4),
+              Text(tarea.descripcion,
+                  style: const TextStyle(fontSize: 13, color: Colors.black54),
+                  maxLines: 3, overflow: TextOverflow.ellipsis),
+            ],
             const SizedBox(height: 6),
             Row(
               children: [
